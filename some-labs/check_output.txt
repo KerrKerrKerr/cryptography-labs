@@ -1,0 +1,157 @@
+warning: unused import: `iced::Length::Shrink`
+ --> src/main.rs:3:5
+  |
+3 | use iced::Length::Shrink;
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `TextInput`
+ --> src/main.rs:4:20
+  |
+4 | use iced::widget::{TextInput, text_input};
+  |                    ^^^^^^^^^
+
+warning: unused imports: `Alignment`, `Color`, `Length`, `alignment::Vertical::Bottom`, `container`, `scrollable`, and `text`
+ --> src/main.rs:6:5
+  |
+6 |     Alignment, Color, Element, Length, 
+  |     ^^^^^^^^^  ^^^^^           ^^^^^^
+7 |     alignment::Vertical::Bottom,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+8 |     widget::{Text, button, column, container, responsive, row, scrollable, text},
+  |                                    ^^^^^^^^^                   ^^^^^^^^^^  ^^^^
+
+warning: variant `ATBASH_INPUT` should have an upper camel case name
+  --> src/main.rs:16:5
+   |
+16 |     ATBASH_INPUT(String),
+   |     ^^^^^^^^^^^^ help: convert the identifier to upper camel case: `AtbashInput`
+   |
+   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variant `CEASAR_INPUT` should have an upper camel case name
+  --> src/main.rs:17:5
+   |
+17 |     CEASAR_INPUT(String),
+   |     ^^^^^^^^^^^^ help: convert the identifier to upper camel case: `CeasarInput`
+
+warning: variant `CEASAR_SHIFT` should have an upper camel case name
+  --> src/main.rs:18:5
+   |
+18 |     CEASAR_SHIFT(String),
+   |     ^^^^^^^^^^^^ help: convert the identifier to upper camel case: `CeasarShift`
+
+warning: variant `RISHELAU_INPUT` should have an upper camel case name
+  --> src/main.rs:19:5
+   |
+19 |     RISHELAU_INPUT(String),
+   |     ^^^^^^^^^^^^^^ help: convert the identifier to upper camel case: `RishelauInput`
+
+warning: unused variable: `size`
+  --> src/main.rs:59:21
+   |
+59 |         responsive(|size| {
+   |                     ^^^^ help: if this is intentional, prefix it with an underscore: `_size`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unreachable pattern
+   --> src/main.rs:127:13
+    |
+127 |             _ => Task::none()
+    |             ^ no value can reach this
+    |
+note: multiple earlier patterns match some of the same values
+   --> src/main.rs:127:13
+    |
+ 98 |             Message::ATBASH => {
+    |             --------------- matches some of the same values
+...
+102 |             Message::CEASAR => {
+    |             --------------- matches some of the same values
+...
+106 |             Message::RISHELAU => {
+    |             ----------------- matches some of the same values
+...
+110 |             Message::ATBASH_INPUT(input) => {
+    |             ---------------------------- matches some of the same values
+...
+127 |             _ => Task::none()
+    |             ^ ...and 3 other patterns collectively make this unreachable
+    = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/main.rs:53:17
+   |
+53 |     pub fn view(&self) -> Element<Message> { 
+   |                 ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                 |
+   |                 the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+   |
+53 |     pub fn view(&self) -> Element<'_, Message> { 
+   |                                   +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/main.rs:71:20
+   |
+71 |     fn draw_atbash(&self) -> Element<Message> {
+   |                    ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                    |
+   |                    the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+71 |     fn draw_atbash(&self) -> Element<'_, Message> {
+   |                                      +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/main.rs:79:20
+   |
+79 |     fn draw_ceasar(&self) -> Element<Message> {
+   |                    ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                    |
+   |                    the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+79 |     fn draw_ceasar(&self) -> Element<'_, Message> {
+   |                                      +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/main.rs:83:22
+   |
+83 |     fn draw_rishelau(&self) -> Element<Message> {
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                      |
+   |                      the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+83 |     fn draw_rishelau(&self) -> Element<'_, Message> {
+   |                                        +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/main.rs:87:29
+   |
+87 |     fn draw_cipher_selector(&self) -> Element<Message> {
+   |                             ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                             |
+   |                             the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+87 |     fn draw_cipher_selector(&self) -> Element<'_, Message> {
+   |                                               +++
+
+warning: `some-labs` (bin "some-labs" test) generated 14 warnings (run `cargo fix --bin "some-labs" -p some-labs --tests` to apply 9 suggestions)
+warning: `some-labs` (bin "some-labs") generated 14 warnings (14 duplicates)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.15s
