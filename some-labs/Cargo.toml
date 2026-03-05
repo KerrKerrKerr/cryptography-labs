@@ -5,3 +5,15 @@ edition = "2024"
 
 [dependencies]
 iced = "0.14.0"
+
+#iced = { version = "0.14.0", default-features = false, features = ["tiny-skia", "wayland", "smol"] }
+[profile.release]
+panic = "abort"
+codegen-units = 1
+opt-level = 3
+debug = false
+overflow-checks = false
+debug-assertions = false
+lto = "fat"
+incremental = false
+strip = "symbols"
