@@ -5,8 +5,8 @@ use iced::Task;
 use iced::Theme;
 use iced::{Element, Length, widget::{column, container, responsive}};
 
-use ciphers::{atbash_cipher, caesar_cipher, gronsfeld_cipher, parse_rishelau_mask, rishelau_cipher, vigenere_cipher, frequency_analysis, auto_substitute, FrequencySubstitution, Language, gamming_encrypt, gamming_decrypt};
-use cipher_ui::{draw_atbash, draw_ceasar, draw_gronsfeld, draw_rishelau, draw_cipher_selector, draw_vigenere, draw_frequency_analysis, draw_gamming};
+use ciphers::{atbash_cipher, caesar_cipher, gronsfeld_cipher, parse_rishelau_mask, rishelau_cipher, vigenere_cipher, frequency_analysis, frequency_decrypt, Language};
+use cipher_ui::{draw_atbash, draw_ceasar, draw_gronsfeld, draw_rishelau, draw_cipher_selector, draw_vigenere, draw_frequency_analysis};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -15,7 +15,6 @@ pub enum Message {
     Rishelau,
     Gronsfeld,
     Vigenere,
-    Gamming,
     FrequencyAnalysis,
     AtbashInput(String),
     AtbashOutputIgnored(String),
@@ -31,18 +30,12 @@ pub enum Message {
     VigenereInput(String),
     VigenereKey(String),
     VigenereOutputIgnored(String),
-    GammingInput(String),
-    GammingSeed(String),
-    GammingOutputIgnored(String),
-    GammingDecrypt,
-    GammingDecrypted(String),
     FreqAnalysisInput(String),
     FreqAnalysisPaste,
     FreqAnalysisLoadFile,
     FreqAnalysisFileLoaded(String, String),
     FreqAnalysisDecrypt(Language),
     FreqAnalysisDecrypted(String),
-    FreqAnalysisReplace(char, char),
 }
 
 #[derive(Default)]
@@ -61,7 +54,6 @@ pub enum Ciphers {
     RISHELAU,
     GRONSFELD,
     VIGENERE,
-    GAMMING,
     FrequencyAnalysis,
 }
 
@@ -84,17 +76,11 @@ pub struct AppState {
     vigenere_input: String,
     vigenere_key: String,
     vigenere_output: String,
-    gamming_input: String,
-    gamming_seed: String,
-    gamming_output: String,
-    gamming_ciphertext: Vec<u8>,
-    gamming_decrypted: String,
     freq_analysis_input: String,
     freq_analysis_result: Vec<(char, usize, f64)>,
     freq_analysis_error: String,
     freq_analysis_decrypted: String,
     freq_analysis_selected_lang: Language,
-    freq_analysis_substitution: FrequencySubstitution,
 }
 
 impl AppState {
@@ -139,8 +125,7 @@ impl AppState {
                     Ciphers::RISHELAU => draw_rishelau(&self.rishelau_input, &self.rishelau_output, &self.rishelau_mask, &self.rishelau_error),
                     Ciphers::GRONSFELD => draw_gronsfeld(&self.gronsfeld_input, &self.gronsfeld_key, &self.gronsfeld_output),
                     Ciphers::VIGENERE => draw_vigenere(&self.vigenere_input, &self.vigenere_key, &self.vigenere_output),
-                    Ciphers::GAMMING => draw_gamming(&self.gamming_input, &self.gamming_seed, &self.gamming_output, &self.gamming_decrypted),
-                    Ciphers::FrequencyAnalysis => draw_frequency_analysis(&self.freq_analysis_input, &self.freq_analysis_result, &self.freq_analysis_error, &self.freq_analysis_decrypted, self.freq_analysis_selected_lang, &self.freq_analysis_substitution),
+                    Ciphers::FrequencyAnalysis => draw_frequency_analysis(&self.freq_analysis_input, &self.freq_analysis_result, &self.freq_analysis_error, &self.freq_analysis_decrypted, self.freq_analysis_selected_lang),
                 }
             ]
             .spacing(16)
@@ -234,33 +219,6 @@ impl AppState {
                 Task::none()
             }
             Message::VigenereOutputIgnored(_input) => Task::none(),
-            Message::Gamming => {
-                self.cipher_selected = Ciphers::GAMMING;
-                Task::none()
-            }
-            Message::GammingInput(input) => {
-                self.gamming_input = input;
-                let seed: u32 = self.gamming_seed.trim().parse().unwrap_or(1);
-                self.gamming_ciphertext = gamming_encrypt(&self.gamming_input, seed);
-                self.gamming_output = hex_encode(&self.gamming_ciphertext);
-                self.gamming_decrypted.clear();
-                Task::none()
-            }
-            Message::GammingSeed(seed) => {
-                self.gamming_seed = seed;
-                let seed: u32 = self.gamming_seed.trim().parse().unwrap_or(1);
-                self.gamming_ciphertext = gamming_encrypt(&self.gamming_input, seed);
-                self.gamming_output = hex_encode(&self.gamming_ciphertext);
-                self.gamming_decrypted.clear();
-                Task::none()
-            }
-            Message::GammingOutputIgnored(_input) => Task::none(),
-            Message::GammingDecrypt => {
-                let seed: u32 = self.gamming_seed.trim().parse().unwrap_or(1);
-                self.gamming_decrypted = gamming_decrypt(&self.gamming_ciphertext, seed);
-                Task::none()
-            }
-            Message::GammingDecrypted(_) => Task::none(),
             Message::FrequencyAnalysis => {
                 self.cipher_selected = Ciphers::FrequencyAnalysis;
                 Task::none()
@@ -293,22 +251,12 @@ impl AppState {
             }
             Message::FreqAnalysisDecrypt(lang) => {
                 self.freq_analysis_selected_lang = lang;
-                self.freq_analysis_substitution = auto_substitute(&self.freq_analysis_input, lang);
-                self.freq_analysis_decrypted = self.freq_analysis_substitution.apply(&self.freq_analysis_input);
+                self.freq_analysis_decrypted = frequency_decrypt(&self.freq_analysis_input, lang);
                 Task::none()
             }
             Message::FreqAnalysisDecrypted(_result) => Task::none(),
-            Message::FreqAnalysisReplace(cipher_char, plain_char) => {
-                self.freq_analysis_substitution.map.insert(cipher_char, plain_char);
-                self.freq_analysis_decrypted = self.freq_analysis_substitution.apply(&self.freq_analysis_input);
-                Task::none()
-            }
         }
     }
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ")
 }
 
 fn main() -> iced::Result {
