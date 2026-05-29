@@ -2,6 +2,7 @@ use iced::{Element, Length, widget::{Text, button, column, responsive, row, text
 use iced::widget::text::LineHeight;
 
 use crate::{Message, Language};
+use crate::ciphers::FrequencySubstitution;
 
 pub fn draw_cipher_selector<'a>() -> Element<'a, Message> {
     row![
@@ -11,6 +12,7 @@ pub fn draw_cipher_selector<'a>() -> Element<'a, Message> {
         button("Rishelau").on_press(Message::Rishelau),
         button("Gronsfeld").on_press(Message::Gronsfeld),
         button("Vigenere").on_press(Message::Vigenere),
+        button("Gamming").on_press(Message::Gamming),
         button("Frequency Analysis").on_press(Message::FrequencyAnalysis),
     ]
     .spacing(5)
@@ -51,6 +53,103 @@ pub fn draw_atbash<'a>(input: &'a str, output: &'a str) -> Element<'a, Message> 
             Text::new("Atbash Cipher").size(28),
             Text::new("Atbash is symmetric: to decode, just paste the ciphered text into the input.").size(16),
             io_layout,
+        ]
+        .spacing(12)
+        .width(Length::Fill)
+        .into()
+    })
+    .into()
+}
+
+pub fn draw_gamming<'a>(input: &'a str, seed: &'a str, shift_a: &'a str, shift_b: &'a str, shift_c: &'a str, output: &'a str, decrypted: &'a str) -> Element<'a, Message> {
+    responsive(move |size| {
+        let gamming_input = text_input("Plaintext or hex ciphertext", input)
+            .on_input(Message::GammingInput)
+            .padding(10)
+            .size(20)
+            .width(Length::Fill);
+
+        let gamming_seed = text_input("Seed (number)", seed)
+            .on_input(Message::GammingSeed)
+            .padding(10)
+            .size(20)
+            .width(Length::Fill);
+
+        let gamming_a = text_input("Shift a (default 13)", shift_a)
+            .on_input(Message::GammingShiftA)
+            .padding(10)
+            .size(20)
+            .width(Length::Fill);
+        let gamming_b = text_input("Shift b (default 17)", shift_b)
+            .on_input(Message::GammingShiftB)
+            .padding(10)
+            .size(20)
+            .width(Length::Fill);
+        let gamming_c = text_input("Shift c (default 5)", shift_c)
+            .on_input(Message::GammingShiftC)
+            .padding(10)
+            .size(20)
+            .width(Length::Fill);
+
+        let left_block = column![
+            Text::new("Plaintext Input"),
+            gamming_input,
+            Text::new("Seed (for PRNG)"),
+            gamming_seed,
+            Text::new("PRNG Constants (Xorshift32)"),
+            row![
+                column![Text::new("a").size(14), gamming_a].spacing(4).width(Length::FillPortion(1)),
+                column![Text::new("b").size(14), gamming_b].spacing(4).width(Length::FillPortion(1)),
+                column![Text::new("c").size(14), gamming_c].spacing(4).width(Length::FillPortion(1)),
+            ].spacing(8),
+        ]
+        .spacing(8)
+        .width(Length::FillPortion(1));
+
+        let right_block = column![
+            Text::new("Ciphertext (hex)"),
+            text_input("Encrypted hex output", output)
+                .on_input(Message::GammingOutputIgnored)
+                .padding(10)
+                .size(20)
+                .width(Length::Fill),
+            row![
+                button("Encrypt").on_press(Message::GammingEncrypt),
+                button("Decrypt").on_press(Message::GammingDecrypt),
+            ].spacing(8),
+        ]
+        .spacing(8)
+        .width(Length::FillPortion(1));
+
+        let io_layout: Element<'_, Message> = if size.width < 760.0 {
+            column![left_block, right_block].spacing(12).width(Length::Fill).into()
+        } else {
+            row![left_block, right_block].spacing(16).width(Length::Fill).into()
+        };
+
+        let decrypted_area = if !decrypted.is_empty() {
+            column![
+                Text::new("Decrypted Result:").size(18),
+                container(
+                    Text::new(decrypted).size(16)
+                )
+                .padding(10)
+                .width(Length::Fill)
+                .style(|_theme: &iced::Theme| iced::widget::container::Style {
+                    background: Some(iced::Background::Color(iced::Color::from_rgb(0.9, 0.95, 1.0))),
+                    ..Default::default()
+                }),
+            ]
+            .spacing(8)
+        } else {
+            column![]
+        };
+
+        column![
+            Text::new("Gamming Cipher (XOR Stream)").size(28),
+            Text::new("Stream cipher: plaintext XOR-ed with PRNG gamma (Xorshift32 with configurable constants). Type text and press Encrypt, or paste hex and press Decrypt.").size(16),
+            io_layout,
+            decrypted_area,
         ]
         .spacing(12)
         .width(Length::Fill)
@@ -286,6 +385,9 @@ pub fn draw_frequency_analysis<'a>(
     error: &'a str,
     decrypted: &'a str,
     selected_lang: Language,
+    substitution: &'a Option<FrequencySubstitution>,
+    swap_a: &'a str,
+    swap_b: &'a str,
 ) -> Element<'a, Message> {
     responsive(move |_size| {
         // Input area with buttons
@@ -317,23 +419,28 @@ pub fn draw_frequency_analysis<'a>(
         // Show selected language
         let lang_text = format!("Selected language: {:?}", selected_lang);
 
-        // Build frequency table
+        // Build frequency table with integrated plaintext mapping
         let mut table_content: iced::widget::Column<'_, Message> = column![];
-        
+        let has_sub = substitution.is_some();
+
         if !result.is_empty() {
             // Header row
             let header = row![
-                container(Text::new("Symbol").size(16)).width(Length::Fixed(80.0)),
-                container(Text::new("Count").size(16)).width(Length::Fixed(80.0)),
-                container(Text::new("Frequency %").size(16)).width(Length::Fixed(100.0)),
+                container(Text::new("Symbol").size(16)).width(Length::Fixed(70.0)),
+                container(Text::new("Count").size(16)).width(Length::Fixed(60.0)),
+                container(Text::new("%").size(16)).width(Length::Fixed(60.0)),
                 container(Text::new("Bar").size(16)).width(Length::Fill),
+                if has_sub {
+                    container(Text::new("Decodes to").size(16)).width(Length::Fixed(80.0))
+                } else {
+                    container(Text::new("")).width(Length::Fixed(0.0))
+                },
             ]
-            .spacing(10)
-            .padding(5);
-            
+            .spacing(6)
+            .padding(3);
+
             table_content = table_content.push(header);
-            
-            // Separator line
+
             let separator = container(
                 iced::widget::Space::new()
                     .width(Length::Fill)
@@ -345,10 +452,8 @@ pub fn draw_frequency_analysis<'a>(
                 });
             table_content = table_content.push(separator);
 
-            // Find max count for bar scaling
             let max_count = result.iter().map(|(_, count, _)| *count).max().unwrap_or(1);
 
-            // Data rows
             for (ch, count, percentage) in result {
                 let bar_width = (*count as f32 / max_count as f32) * 200.0;
                 let bar = container(
@@ -361,16 +466,60 @@ pub fn draw_frequency_analysis<'a>(
                         ..Default::default()
                     });
 
+                let plain_cell = if has_sub {
+                    let plain = substitution.as_ref().and_then(|sub| {
+                        sub.entries.iter().find(|(c, _)| c == ch).map(|(_, p)| p)
+                    });
+                    let text = plain.map(|p| format!("'{}'", p)).unwrap_or_default();
+                    container(Text::new(text).size(14)).width(Length::Fixed(80.0))
+                } else {
+                    container(Text::new("")).width(Length::Fixed(0.0))
+                };
+
                 let row_data = row![
-                    container(Text::new(format!("'{}'", ch)).size(14)).width(Length::Fixed(80.0)),
-                    container(Text::new(count.to_string()).size(14)).width(Length::Fixed(80.0)),
-                    container(Text::new(format!("{:.2}%", percentage)).size(14)).width(Length::Fixed(100.0)),
+                    container(Text::new(format!("'{}'", ch)).size(14)).width(Length::Fixed(70.0)),
+                    container(Text::new(count.to_string()).size(14)).width(Length::Fixed(60.0)),
+                    container(Text::new(format!("{:.2}%", percentage)).size(14)).width(Length::Fixed(60.0)),
                     container(bar).width(Length::Fill),
+                    plain_cell,
                 ]
-                .spacing(10)
-                .padding(3);
+                .spacing(6)
+                .padding(2);
 
                 table_content = table_content.push(row_data);
+            }
+
+            // Swap controls integrated after table rows
+            if has_sub {
+                let sep2 = container(
+                    iced::widget::Space::new()
+                        .width(Length::Fill)
+                        .height(Length::Fixed(1.0))
+                )
+                    .style(|_theme: &iced::Theme| iced::widget::container::Style {
+                        background: Some(iced::Background::Color(iced::Color::from_rgb(0.7, 0.7, 0.7))),
+                        ..Default::default()
+                    });
+                table_content = table_content.push(sep2);
+
+                let swap_row = row![
+                    Text::new("Swap:").size(14),
+                    text_input("a", swap_a)
+                        .on_input(Message::FreqAnalysisSwapA)
+                        .padding(3)
+                        .size(14)
+                        .width(Length::Fixed(36.0)),
+                    Text::new("↔").size(14),
+                    text_input("b", swap_b)
+                        .on_input(Message::FreqAnalysisSwapB)
+                        .padding(3)
+                        .size(14)
+                        .width(Length::Fixed(36.0)),
+                    button("Swap").on_press(Message::FreqAnalysisSwap),
+                ]
+                .spacing(6)
+                .padding(3);
+                table_content = table_content.push(swap_row);
             }
         }
 
@@ -384,7 +533,6 @@ pub fn draw_frequency_analysis<'a>(
             Text::new(error).size(14)
         };
 
-        // Decrypted text area (read-only, multiline display)
         let decrypted_area = if !decrypted.is_empty() {
             column![
                 Text::new("Decrypted text (frequency-based):").size(18),

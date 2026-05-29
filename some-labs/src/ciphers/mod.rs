@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub fn atbash_cipher(input: &str) -> String {
     const RU_LOWER: [char; 33] = [
@@ -262,7 +262,6 @@ pub fn vigenere_cipher(input: &str, key: &str, decode: bool) -> String {
         'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я',
     ];
 
-    // Фильтруем ключ, оставляя только буквы
     let key_chars: Vec<char> = key
         .chars()
         .filter(|c| c.is_ascii_alphabetic() || RU_LOWER.contains(c) || RU_UPPER.contains(c))
@@ -306,11 +305,9 @@ pub fn vigenere_cipher(input: &str, key: &str, decode: bool) -> String {
     input
         .chars()
         .map(|c| {
-            // Находим сдвиг для текущего символа ключа
             let key_char = key_chars[key_index % key_chars.len()];
             let shift = get_shift(key_char) * direction;
 
-            // Сдвигаем символ текста
             let result = if c.is_ascii_lowercase() {
                 shift_ascii(c, 'a', shift)
             } else if c.is_ascii_uppercase() {
@@ -323,7 +320,6 @@ pub fn vigenere_cipher(input: &str, key: &str, decode: bool) -> String {
                 c
             };
 
-            // Увеличиваем индекс ключа только если символ был зашифрован
             if c.is_ascii_alphabetic() || RU_LOWER.contains(&c) || RU_UPPER.contains(&c) {
                 key_index += 1;
             }
@@ -333,31 +329,88 @@ pub fn vigenere_cipher(input: &str, key: &str, decode: bool) -> String {
         .collect()
 }
 
+/// Xorshift32 PRNG with configurable shift constants
+#[derive(Debug, Clone)]
+pub struct Xorshift32 {
+    state: u32,
+}
+
+impl Xorshift32 {
+    pub fn new(seed: u32) -> Self {
+        Xorshift32 {
+            state: if seed == 0 { 1 } else { seed },
+        }
+    }
+
+    pub fn next_with(&mut self, a: u32, b: u32, c: u32) -> u32 {
+        let mut x = self.state;
+        x ^= x.wrapping_shl(a);
+        x ^= x.wrapping_shr(b);
+        x ^= x.wrapping_shl(c);
+        self.state = x;
+        x
+    }
+
+    pub fn next_byte_with(&mut self, a: u32, b: u32, c: u32) -> u8 {
+        (self.next_with(a, b, c) & 0xFF) as u8
+    }
+}
+
+pub fn generate_gamma(length: usize, seed: u32, a: u32, b: u32, c: u32) -> Vec<u8> {
+    let mut rng = Xorshift32::new(seed);
+    (0..length).map(|_| rng.next_byte_with(a, b, c)).collect()
+}
+
+pub fn gamming_encrypt(plaintext: &str, seed: u32, a: u32, b: u32, c: u32) -> Vec<u8> {
+    let bytes = plaintext.as_bytes();
+    let gamma = generate_gamma(bytes.len(), seed, a, b, c);
+    bytes.iter().zip(gamma).map(|(&b, g)| b ^ g).collect()
+}
+
+pub fn gamming_decrypt(ciphertext: &[u8], seed: u32, a: u32, b: u32, c: u32) -> String {
+    let gamma = generate_gamma(ciphertext.len(), seed, a, b, c);
+    let bytes: Vec<u8> = ciphertext.iter().zip(gamma).map(|(&b, g)| b ^ g).collect();
+    String::from_utf8_lossy(&bytes).to_string()
+}
+
+pub fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ")
+}
+
+pub fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
+    let cleaned: String = hex.chars().filter(|c| !c.is_whitespace()).collect();
+    if cleaned.len() % 2 != 0 {
+        return Err("Hex string must have even length".to_string());
+    }
+    (0..cleaned.len())
+        .step_by(2)
+        .map(|i| {
+            u8::from_str_radix(&cleaned[i..i + 2], 16)
+                .map_err(|_| format!("Invalid hex pair: {}", &cleaned[i..i + 2]))
+        })
+        .collect()
+}
+
 pub fn frequency_analysis(input: &str) -> Vec<(char, usize, f64)> {
-    use std::collections::HashMap;
-    
     if input.is_empty() {
         return Vec::new();
     }
-    
-    // Count character frequencies
+
     let mut counts: HashMap<char, usize> = HashMap::new();
     let mut total_chars = 0usize;
-    
+
     for ch in input.chars() {
-        // Include only letters; ignore punctuation, control chars and spaces
         if ch.is_alphabetic() {
             let ch_lower = ch.to_lowercase().next().unwrap_or(ch);
             *counts.entry(ch_lower).or_insert(0) += 1;
             total_chars += 1;
         }
     }
-    
+
     if total_chars == 0 {
         return Vec::new();
     }
-    
-    // Convert to vector with percentages and sort by count (descending)
+
     let mut result: Vec<(char, usize, f64)> = counts
         .into_iter()
         .map(|(ch, count)| {
@@ -365,12 +418,11 @@ pub fn frequency_analysis(input: &str) -> Vec<(char, usize, f64)> {
             (ch, count, percentage)
         })
         .collect();
-    
-    // Sort by count descending, then by character for stable ordering
+
     result.sort_by(|a, b| {
         b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0))
     });
-    
+
     result
 }
 
@@ -412,20 +464,17 @@ pub fn frequency_decrypt(ciphertext: &str, language: Language) -> String {
         return String::new();
     }
 
-    // Get frequency table for the selected language
     let freq_table: &[(char, f64)] = match language {
         Language::Russian => &RUSSIAN_FREQUENCIES,
         Language::English => &ENGLISH_FREQUENCIES,
     };
 
-    // Analyze ciphertext frequencies
     let cipher_freq = frequency_analysis(ciphertext);
-    
+
     if cipher_freq.is_empty() {
         return ciphertext.to_string();
     }
 
-    // Create mapping from ciphertext letters to plaintext letters
     let target_letters: Vec<char> = freq_table
         .iter()
         .filter_map(|(ch, _)| {
@@ -437,14 +486,13 @@ pub fn frequency_decrypt(ciphertext: &str, language: Language) -> String {
         })
         .collect();
 
-    let mut mapping: std::collections::HashMap<char, char> = std::collections::HashMap::new();
+    let mut mapping: HashMap<char, char> = HashMap::new();
     for (i, (cipher_char, _, _)) in cipher_freq.iter().enumerate() {
         if i < target_letters.len() {
             mapping.insert(*cipher_char, target_letters[i]);
         }
     }
 
-    // Apply mapping to decrypt, keep whitespace unchanged
     ciphertext
         .chars()
         .map(|c| {
@@ -473,4 +521,90 @@ pub fn frequency_decrypt(ciphertext: &str, language: Language) -> String {
             }
         })
         .collect()
+}
+
+#[derive(Debug, Clone)]
+pub struct FrequencySubstitution {
+    pub entries: Vec<(char, char)>,
+    mapping: HashMap<char, char>,
+}
+
+impl FrequencySubstitution {
+    pub fn new(ciphertext: &str, language: Language) -> Self {
+        let freq_table: &[(char, f64)] = match language {
+            Language::Russian => &RUSSIAN_FREQUENCIES,
+            Language::English => &ENGLISH_FREQUENCIES,
+        };
+
+        let cipher_freq = frequency_analysis(ciphertext);
+
+        let target_letters: Vec<char> = freq_table
+            .iter()
+            .filter_map(|(ch, _)| if *ch == ' ' { None } else { Some(*ch) })
+            .collect();
+
+        let mut mapping = HashMap::new();
+        let mut entries = Vec::new();
+        for (i, (cipher_char, _, _)) in cipher_freq.iter().enumerate() {
+            if i < target_letters.len() {
+                let plain_lower = target_letters[i].to_lowercase().next().unwrap_or(target_letters[i]);
+                mapping.insert(*cipher_char, plain_lower);
+                entries.push((*cipher_char, plain_lower));
+            }
+        }
+
+        FrequencySubstitution { entries, mapping }
+    }
+
+    pub fn swap(&mut self, plain_a: char, plain_b: char) {
+        let plain_a_lower = plain_a.to_lowercase().next().unwrap_or(plain_a);
+        let plain_b_lower = plain_b.to_lowercase().next().unwrap_or(plain_b);
+
+        let rev: HashMap<char, char> =
+            self.mapping.iter().map(|(&k, &v)| (v, k)).collect();
+
+        if let Some(&cipher_a) = rev.get(&plain_a_lower) {
+            if let Some(&cipher_b) = rev.get(&plain_b_lower) {
+                self.mapping.insert(cipher_a, plain_b_lower);
+                self.mapping.insert(cipher_b, plain_a_lower);
+                for entry in self.entries.iter_mut() {
+                    if entry.0 == cipher_a {
+                        entry.1 = plain_b_lower;
+                    } else if entry.0 == cipher_b {
+                        entry.1 = plain_a_lower;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn decrypt(&self, ciphertext: &str) -> String {
+        ciphertext
+            .chars()
+            .map(|c| {
+                if c.is_whitespace() {
+                    c
+                } else {
+                    let lookup = c.to_lowercase().next().unwrap_or(c);
+                    if let Some(&plain_char) = self.mapping.get(&lookup) {
+                        if c.is_ascii_alphabetic() {
+                            if c.is_uppercase() {
+                                plain_char.to_ascii_uppercase()
+                            } else {
+                                plain_char.to_ascii_lowercase()
+                            }
+                        } else if c.is_uppercase() {
+                            plain_char.to_uppercase().next().unwrap_or(plain_char)
+                        } else if c.is_lowercase() {
+                            plain_char.to_lowercase().next().unwrap_or(plain_char)
+                        } else {
+                            plain_char
+                        }
+                    } else {
+                        c
+                    }
+                }
+            })
+            .collect()
+    }
 }

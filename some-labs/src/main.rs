@@ -5,8 +5,8 @@ use iced::Task;
 use iced::Theme;
 use iced::{Element, Length, widget::{column, container, responsive}};
 
-use ciphers::{atbash_cipher, caesar_cipher, gronsfeld_cipher, parse_rishelau_mask, rishelau_cipher, vigenere_cipher, frequency_analysis, frequency_decrypt, Language};
-use cipher_ui::{draw_atbash, draw_ceasar, draw_gronsfeld, draw_rishelau, draw_cipher_selector, draw_vigenere, draw_frequency_analysis};
+use ciphers::{atbash_cipher, caesar_cipher, gronsfeld_cipher, parse_rishelau_mask, rishelau_cipher, vigenere_cipher, frequency_analysis, FrequencySubstitution, Language, gamming_encrypt, gamming_decrypt, hex_encode, hex_decode};
+use cipher_ui::{draw_atbash, draw_ceasar, draw_gronsfeld, draw_rishelau, draw_cipher_selector, draw_vigenere, draw_frequency_analysis, draw_gamming};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -15,6 +15,7 @@ pub enum Message {
     Rishelau,
     Gronsfeld,
     Vigenere,
+    Gamming,
     FrequencyAnalysis,
     AtbashInput(String),
     AtbashOutputIgnored(String),
@@ -36,6 +37,17 @@ pub enum Message {
     FreqAnalysisFileLoaded(String, String),
     FreqAnalysisDecrypt(Language),
     FreqAnalysisDecrypted(String),
+    GammingInput(String),
+    GammingSeed(String),
+    GammingShiftA(String),
+    GammingShiftB(String),
+    GammingShiftC(String),
+    GammingOutputIgnored(String),
+    GammingEncrypt,
+    GammingDecrypt,
+    FreqAnalysisSwapA(String),
+    FreqAnalysisSwapB(String),
+    FreqAnalysisSwap,
 }
 
 #[derive(Default)]
@@ -54,6 +66,7 @@ pub enum Ciphers {
     RISHELAU,
     GRONSFELD,
     VIGENERE,
+    GAMMING,
     FrequencyAnalysis,
 }
 
@@ -76,11 +89,21 @@ pub struct AppState {
     vigenere_input: String,
     vigenere_key: String,
     vigenere_output: String,
+    gamming_input: String,
+    gamming_seed: String,
+    gamming_shift_a: String,
+    gamming_shift_b: String,
+    gamming_shift_c: String,
+    gamming_output: String,
+    gamming_decrypted: String,
     freq_analysis_input: String,
     freq_analysis_result: Vec<(char, usize, f64)>,
     freq_analysis_error: String,
     freq_analysis_decrypted: String,
     freq_analysis_selected_lang: Language,
+    freq_substitution: Option<FrequencySubstitution>,
+    freq_swap_input_a: String,
+    freq_swap_input_b: String,
 }
 
 impl AppState {
@@ -125,7 +148,8 @@ impl AppState {
                     Ciphers::RISHELAU => draw_rishelau(&self.rishelau_input, &self.rishelau_output, &self.rishelau_mask, &self.rishelau_error),
                     Ciphers::GRONSFELD => draw_gronsfeld(&self.gronsfeld_input, &self.gronsfeld_key, &self.gronsfeld_output),
                     Ciphers::VIGENERE => draw_vigenere(&self.vigenere_input, &self.vigenere_key, &self.vigenere_output),
-                    Ciphers::FrequencyAnalysis => draw_frequency_analysis(&self.freq_analysis_input, &self.freq_analysis_result, &self.freq_analysis_error, &self.freq_analysis_decrypted, self.freq_analysis_selected_lang),
+                    Ciphers::GAMMING => draw_gamming(&self.gamming_input, &self.gamming_seed, &self.gamming_shift_a, &self.gamming_shift_b, &self.gamming_shift_c, &self.gamming_output, &self.gamming_decrypted),
+                    Ciphers::FrequencyAnalysis => draw_frequency_analysis(&self.freq_analysis_input, &self.freq_analysis_result, &self.freq_analysis_error, &self.freq_analysis_decrypted, self.freq_analysis_selected_lang, &self.freq_substitution, &self.freq_swap_input_a, &self.freq_swap_input_b),
                 }
             ]
             .spacing(16)
@@ -219,6 +243,68 @@ impl AppState {
                 Task::none()
             }
             Message::VigenereOutputIgnored(_input) => Task::none(),
+            Message::Gamming => {
+                self.cipher_selected = Ciphers::GAMMING;
+                Task::none()
+            }
+            Message::GammingInput(input) => {
+                self.gamming_input = input;
+                self.gamming_output.clear();
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingSeed(seed) => {
+                self.gamming_seed = seed;
+                self.gamming_output.clear();
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingShiftA(val) => {
+                self.gamming_shift_a = val;
+                self.gamming_output.clear();
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingShiftB(val) => {
+                self.gamming_shift_b = val;
+                self.gamming_output.clear();
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingShiftC(val) => {
+                self.gamming_shift_c = val;
+                self.gamming_output.clear();
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingOutputIgnored(_input) => Task::none(),
+            Message::GammingEncrypt => {
+                let seed: u32 = self.gamming_seed.trim().parse().unwrap_or(1);
+                let a: u32 = self.gamming_shift_a.trim().parse().unwrap_or(13);
+                let b: u32 = self.gamming_shift_b.trim().parse().unwrap_or(17);
+                let c: u32 = self.gamming_shift_c.trim().parse().unwrap_or(5);
+                let ciphertext = gamming_encrypt(&self.gamming_input, seed, a, b, c);
+                self.gamming_output = hex_encode(&ciphertext);
+                self.gamming_decrypted.clear();
+                Task::none()
+            }
+            Message::GammingDecrypt => {
+                let seed: u32 = self.gamming_seed.trim().parse().unwrap_or(1);
+                let a: u32 = self.gamming_shift_a.trim().parse().unwrap_or(13);
+                let b: u32 = self.gamming_shift_b.trim().parse().unwrap_or(17);
+                let c: u32 = self.gamming_shift_c.trim().parse().unwrap_or(5);
+                match hex_decode(&self.gamming_input) {
+                    Ok(bytes) => {
+                        self.gamming_decrypted = gamming_decrypt(&bytes, seed, a, b, c);
+                        self.gamming_output.clear();
+                    }
+                    Err(e) => {
+                        self.gamming_output = format!("Hex decode error: {}", e);
+                        self.gamming_decrypted.clear();
+                    }
+                }
+                Task::none()
+            }
             Message::FrequencyAnalysis => {
                 self.cipher_selected = Ciphers::FrequencyAnalysis;
                 Task::none()
@@ -228,6 +314,9 @@ impl AppState {
                 self.freq_analysis_result = frequency_analysis(&self.freq_analysis_input);
                 self.freq_analysis_error.clear();
                 self.freq_analysis_decrypted.clear();
+                self.freq_substitution = None;
+                self.freq_swap_input_a.clear();
+                self.freq_swap_input_b.clear();
                 Task::none()
             }
             Message::FreqAnalysisPaste => {
@@ -251,10 +340,33 @@ impl AppState {
             }
             Message::FreqAnalysisDecrypt(lang) => {
                 self.freq_analysis_selected_lang = lang;
-                self.freq_analysis_decrypted = frequency_decrypt(&self.freq_analysis_input, lang);
+                let sub = FrequencySubstitution::new(&self.freq_analysis_input, lang);
+                self.freq_analysis_decrypted = sub.decrypt(&self.freq_analysis_input);
+                self.freq_substitution = Some(sub);
+                self.freq_swap_input_a.clear();
+                self.freq_swap_input_b.clear();
                 Task::none()
             }
             Message::FreqAnalysisDecrypted(_result) => Task::none(),
+            Message::FreqAnalysisSwapA(input) => {
+                self.freq_swap_input_a = input.chars().last().map(|c| c.to_string()).unwrap_or_default();
+                Task::none()
+            }
+            Message::FreqAnalysisSwapB(input) => {
+                self.freq_swap_input_b = input.chars().last().map(|c| c.to_string()).unwrap_or_default();
+                Task::none()
+            }
+            Message::FreqAnalysisSwap => {
+                if let Some(ref mut substitution) = self.freq_substitution {
+                    let a = self.freq_swap_input_a.chars().next();
+                    let b = self.freq_swap_input_b.chars().next();
+                    if let (Some(a_char), Some(b_char)) = (a, b) {
+                        substitution.swap(a_char, b_char);
+                        self.freq_analysis_decrypted = substitution.decrypt(&self.freq_analysis_input);
+                    }
+                }
+                Task::none()
+            }
         }
     }
 }
