@@ -1,0 +1,90 @@
+warning: unused import: `frequency::frequency_decrypt`
+  --> src/ciphers/mod.rs:12:9
+   |
+12 | pub use frequency::frequency_decrypt;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `frequency::frequency_decrypt`
+  --> src/ciphers/mod.rs:12:9
+   |
+12 | pub use frequency::frequency_decrypt;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `has_russian` is assigned to, but never used
+ --> src/ciphers/caesar.rs:5:9
+  |
+5 |     let mut has_russian = false;
+  |         ^^^^^^^^^^^^^^^
+  |
+  = note: consider using `_has_russian` instead
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `has_russian` is never read
+  --> src/ciphers/caesar.rs:14:13
+   |
+14 |             has_russian = true;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `has_russian` is never read
+ --> src/ciphers/caesar.rs:9:13
+  |
+9 |             has_russian = false;
+  |             ^^^^^^^^^^^^^^^^^^^
+  |
+  = help: maybe it is overwritten before being read?
+
+warningwarning: variable `has_russian` is assigned to, but never used
+ --> src/ciphers/caesar.rs:5:9
+  |
+5 |     let mut has_russian = false;
+  |         ^^^^^^^^^^^^^^^
+  |
+  = note: consider using `_has_russian` instead
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `has_russian` is never read
+  --> src/ciphers/caesar.rs:14:13
+   |
+14 |             has_russian = true;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `has_russian` is never read
+ --> src/ciphers/caesar.rs:9:13
+  |
+9 |             has_russian = false;
+  |             ^^^^^^^^^^^^^^^^^^^
+  |
+  = help: maybe it is overwritten before being read?
+
+warning: function `frequency_decrypt` is never used
+   --> : function `frequency_decrypt` is never used
+   --> src/ciphers/frequency.rs:105:8
+    |
+105src/ciphers/frequency.rs:105:8
+    |
+105 | | pub fn frequency_decrypt(input: &str, language: Language) -> String {
+    |         pub fn frequency_decrypt(input: &str, language: Language) -> String {
+    |        ^^^^^^^^^^^^^^^^^
+    |
+    = ^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `some-labs` (bin "some-labs") generated 5 warnings (run `cargo fix --bin "some-labs" -p some-labs` to apply 1 suggestion)
+warning: `some-labs` (bin "some-labs") generated 5 warnings (run `cargo fix --bin "some-labs" -p some-labs` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running `target/debug/some-labs run`
+     Running `target/debug/some-labs run`
